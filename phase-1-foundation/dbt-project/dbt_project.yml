@@ -1,0 +1,153 @@
+# ============================================================
+# dbt Project Configuration
+# NexVigilant Autonomous Marketing Engine - Data Foundation
+# ============================================================
+
+name: 'nexvigilant_marketing'
+version: '1.0.0'
+config-version: 2
+
+# Project profile (connect to BigQuery)
+profile: 'nexvigilant_marketing'
+
+# Directories
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Model configurations
+models:
+  nexvigilant_marketing:
+
+    # Staging models (Bronze → Silver)
+    staging:
+      +materialized: table
+      +schema: staging
+      +tags: ["staging", "silver"]
+      +meta:
+        layer: "silver"
+        owner: "data_engineering"
+
+      # Customer staging
+      customer:
+        +materialized: table
+        +tags: ["customer", "pii"]
+
+      # Events staging
+      events:
+        +materialized: incremental
+        +unique_key: event_id
+        +on_schema_change: "append_new_columns"
+        +partition_by:
+          field: event_date
+          data_type: date
+        +cluster_by: ["event_type", "customer_id"]
+        +tags: ["events", "high_volume"]
+
+      # Transactions staging
+      transactions:
+        +materialized: incremental
+        +unique_key: transaction_id
+        +partition_by:
+          field: transaction_date
+          data_type: date
+        +cluster_by: ["customer_id"]
+
+      # Marketing staging
+      marketing:
+        +materialized: table
+        +tags: ["marketing"]
+
+    # Marts models (Silver → Gold)
+    marts:
+      +materialized: table
+      +schema: marts
+      +tags: ["marts", "gold"]
+      +meta:
+        layer: "gold"
+        owner: "analytics"
+
+      # Marketing marts
+      marketing:
+        +materialized: table
+        +tags: ["marketing", "attribution"]
+
+      # Customer marts
+      customer:
+        +materialized: table
+        +tags: ["customer", "health"]
+
+      # ML marts
+      ml:
+        +materialized: table
+        +tags: ["ml", "features"]
+        +meta:
+          purpose: "feature_store"
+
+# Seeds configuration (CSV files)
+seeds:
+  nexvigilant_marketing:
+    +schema: seeds
+    +tags: ["seeds"]
+
+# Snapshots configuration
+snapshots:
+  nexvigilant_marketing:
+    +target_schema: snapshots
+    +strategy: timestamp
+    +updated_at: updated_at
+
+# Documentation
+docs:
+  generate: true
+
+# Tests
+tests:
+  nexvigilant_marketing:
+    +severity: error
+    +store_failures: true
+    +schema: test_failures
+
+# Vars (can be overridden at runtime)
+vars:
+  # Date ranges
+  start_date: '2024-01-01'
+  lookback_days: 90
+
+  # Thresholds
+  churn_risk_threshold: 0.7
+  lead_score_threshold: 70
+  health_score_threshold: 60
+
+  # Feature flags
+  enable_ml_features: true
+  enable_attribution: true
+  enable_cohorts: true
+
+  # Data quality
+  null_rate_threshold: 0.05  # 5% max nulls
+  freshness_threshold_hours: 24
+
+# On-run-start SQL
+on-run-start:
+  - "{{ log('Starting dbt run for NexVigilant Marketing Engine', info=True) }}"
+  - "CREATE SCHEMA IF NOT EXISTS {{ target.schema }}"
+
+# On-run-end SQL
+on-run-end:
+  - "{{ log('Completed dbt run successfully', info=True) }}"
+  - "{{ log_data_quality_results() }}"  # Custom macro
+
+# Query comments (for BigQuery job labels)
+query-comment:
+  comment: "dbt_run"
+  append: true
+  job-label: true

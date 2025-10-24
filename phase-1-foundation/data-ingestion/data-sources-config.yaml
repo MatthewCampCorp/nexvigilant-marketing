@@ -1,0 +1,467 @@
+# Data Sources Configuration
+# This file defines all data sources that will be ingested into BigQuery
+
+version: "1.0"
+last_updated: "2025-10-23"
+
+# Global Settings
+global:
+  target_project: "nexvigilant-prod"
+  target_dataset_raw: "raw_data"
+  target_dataset_staging: "staging"
+  target_dataset_marts: "marts"
+  default_sync_frequency: "daily"
+  timezone: "America/New_York"
+
+data_sources:
+
+  # CRM System - Salesforce
+  - source_id: "salesforce_crm"
+    source_type: "salesforce"
+    description: "Salesforce CRM data including accounts, contacts, leads, opportunities"
+    ingestion_tool: "fivetran"
+    sync_frequency: "hourly"
+    sync_mode: "incremental"
+    priority: "critical"
+
+    tables:
+      - name: "Account"
+        destination_table: "raw_salesforce_accounts"
+        primary_key: "Id"
+        updated_at_field: "LastModifiedDate"
+        estimated_rows: 50000
+
+      - name: "Contact"
+        destination_table: "raw_salesforce_contacts"
+        primary_key: "Id"
+        updated_at_field: "LastModifiedDate"
+        estimated_rows: 200000
+
+      - name: "Lead"
+        destination_table: "raw_salesforce_leads"
+        primary_key: "Id"
+        updated_at_field: "LastModifiedDate"
+        estimated_rows: 500000
+
+      - name: "Opportunity"
+        destination_table: "raw_salesforce_opportunities"
+        primary_key: "Id"
+        updated_at_field: "LastModifiedDate"
+        estimated_rows: 100000
+
+      - name: "Campaign"
+        destination_table: "raw_salesforce_campaigns"
+        primary_key: "Id"
+        updated_at_field: "LastModifiedDate"
+        estimated_rows: 5000
+
+      - name: "CampaignMember"
+        destination_table: "raw_salesforce_campaign_members"
+        primary_key: "Id"
+        updated_at_field: "LastModifiedDate"
+        estimated_rows: 1000000
+
+    data_quality_checks:
+      - check: "not_null"
+        fields: ["Id", "Email", "LastModifiedDate"]
+      - check: "valid_email"
+        fields: ["Email"]
+      - check: "freshness"
+        max_lag_hours: 2
+
+    estimated_monthly_cost: "$500"
+    owner: "sales-ops@nexvigilant.com"
+
+  # Web Analytics - Google Analytics 360
+  - source_id: "google_analytics_360"
+    source_type: "google_analytics"
+    description: "Website behavioral data, sessions, events, conversions"
+    ingestion_tool: "native_bigquery_export"
+    sync_frequency: "daily"
+    sync_mode: "append"
+    priority: "critical"
+
+    tables:
+      - name: "ga_sessions"
+        destination_table: "raw_ga360_sessions"
+        partition_by: "date"
+        cluster_by: ["fullVisitorId", "channelGrouping"]
+        estimated_daily_rows: 100000
+
+      - name: "ga_events"
+        destination_table: "raw_ga360_events"
+        partition_by: "event_date"
+        cluster_by: ["user_pseudo_id", "event_name"]
+        estimated_daily_rows: 1000000
+
+    export_settings:
+      property_id: "UA-XXXXXXXX-1"
+      view_id: "123456789"
+      export_time: "04:00"  # Daily export at 4 AM
+
+    data_quality_checks:
+      - check: "not_null"
+        fields: ["fullVisitorId", "visitStartTime"]
+      - check: "freshness"
+        max_lag_hours: 24
+      - check: "volume_anomaly"
+        threshold: 0.3  # Alert if daily volume differs by >30%
+
+    estimated_monthly_cost: "$200"
+    owner: "analytics@nexvigilant.com"
+
+  # Mobile App Analytics - Firebase
+  - source_id: "firebase_mobile"
+    source_type: "firebase"
+    description: "Mobile app events and user properties"
+    ingestion_tool: "native_bigquery_export"
+    sync_frequency: "streaming"
+    sync_mode: "append"
+    priority: "high"
+
+    tables:
+      - name: "events"
+        destination_table: "raw_firebase_events"
+        partition_by: "event_date"
+        cluster_by: ["user_pseudo_id", "event_name"]
+        estimated_daily_rows: 500000
+
+      - name: "user_properties"
+        destination_table: "raw_firebase_user_properties"
+        partition_by: "date"
+        estimated_daily_rows: 50000
+
+    export_settings:
+      project_id: "nexvigilant-mobile-app"
+
+    data_quality_checks:
+      - check: "not_null"
+        fields: ["event_date", "event_timestamp", "user_pseudo_id"]
+      - check: "freshness"
+        max_lag_hours: 1
+
+    estimated_monthly_cost: "$100"
+    owner: "mobile-team@nexvigilant.com"
+
+  # Advertising - Google Ads
+  - source_id: "google_ads"
+    source_type: "google_ads"
+    description: "Google Ads campaign performance, keywords, ads"
+    ingestion_tool: "fivetran"
+    sync_frequency: "daily"
+    sync_mode: "incremental"
+    priority: "high"
+
+    tables:
+      - name: "campaign_performance"
+        destination_table: "raw_google_ads_campaign_performance"
+        primary_key: "campaign_id"
+        updated_at_field: "date"
+        estimated_rows: 10000
+
+      - name: "ad_group_performance"
+        destination_table: "raw_google_ads_ad_group_performance"
+        primary_key: "ad_group_id"
+        updated_at_field: "date"
+        estimated_rows: 50000
+
+      - name: "keyword_performance"
+        destination_table: "raw_google_ads_keyword_performance"
+        primary_key: "keyword_id"
+        updated_at_field: "date"
+        estimated_rows: 200000
+
+    api_settings:
+      customer_id: "123-456-7890"
+
+    data_quality_checks:
+      - check: "not_null"
+        fields: ["campaign_id", "date", "impressions", "clicks", "cost"]
+      - check: "positive_values"
+        fields: ["impressions", "clicks", "cost"]
+
+    estimated_monthly_cost: "$300"
+    owner: "paid-media@nexvigilant.com"
+
+  # Email Marketing - Braze
+  - source_id: "braze_engagement"
+    source_type: "braze"
+    description: "Email, SMS, push notification engagement data"
+    ingestion_tool: "braze_currents"
+    sync_frequency: "streaming"
+    sync_mode: "append"
+    priority: "high"
+
+    tables:
+      - name: "email_send"
+        destination_table: "raw_braze_email_send"
+        partition_by: "time"
+        cluster_by: ["user_id", "campaign_id"]
+        estimated_daily_rows: 100000
+
+      - name: "email_open"
+        destination_table: "raw_braze_email_open"
+        partition_by: "time"
+        cluster_by: ["user_id", "campaign_id"]
+        estimated_daily_rows: 25000
+
+      - name: "email_click"
+        destination_table: "raw_braze_email_click"
+        partition_by: "time"
+        cluster_by: ["user_id", "campaign_id"]
+        estimated_daily_rows: 5000
+
+      - name: "push_send"
+        destination_table: "raw_braze_push_send"
+        partition_by: "time"
+        cluster_by: ["user_id", "campaign_id"]
+        estimated_daily_rows: 50000
+
+    export_settings:
+      currents_connector: "google_cloud_storage"
+      bucket: "nexvigilant-braze-currents"
+      file_format: "avro"
+
+    data_quality_checks:
+      - check: "not_null"
+        fields: ["id", "user_id", "time"]
+      - check: "freshness"
+        max_lag_hours: 1
+
+    estimated_monthly_cost: "$400"
+    owner: "marketing-ops@nexvigilant.com"
+
+  # E-commerce Platform - Shopify
+  - source_id: "shopify_store"
+    source_type: "shopify"
+    description: "Orders, products, customers from e-commerce store"
+    ingestion_tool: "fivetran"
+    sync_frequency: "hourly"
+    sync_mode: "incremental"
+    priority: "critical"
+
+    tables:
+      - name: "orders"
+        destination_table: "raw_shopify_orders"
+        primary_key: "id"
+        updated_at_field: "updated_at"
+        estimated_rows: 50000
+
+      - name: "customers"
+        destination_table: "raw_shopify_customers"
+        primary_key: "id"
+        updated_at_field: "updated_at"
+        estimated_rows: 75000
+
+      - name: "products"
+        destination_table: "raw_shopify_products"
+        primary_key: "id"
+        updated_at_field: "updated_at"
+        estimated_rows: 5000
+
+      - name: "order_line_items"
+        destination_table: "raw_shopify_order_line_items"
+        primary_key: "id"
+        estimated_rows: 150000
+
+    api_settings:
+      shop_url: "nexvigilant.myshopify.com"
+
+    data_quality_checks:
+      - check: "not_null"
+        fields: ["id", "email", "created_at"]
+      - check: "valid_email"
+        fields: ["email"]
+      - check: "positive_values"
+        fields: ["total_price", "subtotal_price"]
+
+    estimated_monthly_cost: "$600"
+    owner: "ecommerce@nexvigilant.com"
+
+  # Customer Support - Zendesk
+  - source_id: "zendesk_support"
+    source_type: "zendesk"
+    description: "Support tickets, customer interactions"
+    ingestion_tool: "fivetran"
+    sync_frequency: "daily"
+    sync_mode: "incremental"
+    priority: "medium"
+
+    tables:
+      - name: "tickets"
+        destination_table: "raw_zendesk_tickets"
+        primary_key: "id"
+        updated_at_field: "updated_at"
+        estimated_rows: 20000
+
+      - name: "users"
+        destination_table: "raw_zendesk_users"
+        primary_key: "id"
+        updated_at_field: "updated_at"
+        estimated_rows: 100000
+
+    data_quality_checks:
+      - check: "not_null"
+        fields: ["id", "requester_id", "created_at"]
+
+    estimated_monthly_cost: "$200"
+    owner: "support@nexvigilant.com"
+
+# Reverse ETL Destinations
+reverse_etl_destinations:
+
+  - destination_id: "salesforce_reverse"
+    destination_type: "salesforce"
+    description: "Sync AI scores and segments back to Salesforce"
+    tool: "hightouch"
+
+    syncs:
+      - name: "Lead Scores"
+        source_table: "marts.lead_scores"
+        destination_object: "Lead"
+        mapping:
+          - source: "lead_id"
+            destination: "Id"
+          - source: "predicted_score"
+            destination: "AI_Lead_Score__c"
+          - source: "score_tier"
+            destination: "Lead_Tier__c"
+          - source: "last_scored_at"
+            destination: "Last_Scored_Date__c"
+        sync_frequency: "every_15_minutes"
+
+      - name: "Churn Risk Scores"
+        source_table: "marts.churn_predictions"
+        destination_object: "Account"
+        mapping:
+          - source: "account_id"
+            destination: "Id"
+          - source: "churn_probability"
+            destination: "Churn_Risk__c"
+          - source: "risk_tier"
+            destination: "Churn_Tier__c"
+        sync_frequency: "daily"
+
+  - destination_id: "google_ads_reverse"
+    destination_type: "google_ads"
+    description: "Sync high-value customer audiences"
+    tool: "hightouch"
+
+    syncs:
+      - name: "High CLV Customers"
+        source_table: "marts.customer_segments"
+        destination_object: "Customer Match Audience"
+        mapping:
+          - source: "email"
+            destination: "email"
+          - source: "phone"
+            destination: "phone"
+        filter: "clv_tier = 'high'"
+        sync_frequency: "daily"
+
+  - destination_id: "braze_reverse"
+    destination_type: "braze"
+    description: "Sync behavioral segments for personalization"
+    tool: "hightouch"
+
+    syncs:
+      - name: "Behavioral Segments"
+        source_table: "marts.customer_360"
+        destination_object: "User Attributes"
+        mapping:
+          - source: "customer_id"
+            destination: "external_id"
+          - source: "lifecycle_stage"
+            destination: "lifecycle_stage"
+          - source: "customer_segment"
+            destination: "segment"
+          - source: "predicted_clv"
+            destination: "predicted_clv"
+        sync_frequency: "hourly"
+
+# Data Quality Monitoring
+monitoring:
+
+  # Anomaly Detection
+  anomaly_detection:
+    enabled: true
+    metrics:
+      - "row_count"
+      - "null_percentage"
+      - "unique_value_count"
+    alert_threshold: 0.3  # 30% deviation
+    notification_channel: "slack://data-quality-alerts"
+
+  # Freshness Monitoring
+  freshness_monitoring:
+    enabled: true
+    critical_sources:
+      - "salesforce_crm"
+      - "google_analytics_360"
+      - "shopify_store"
+    max_lag_hours: 24
+    notification_channel: "pagerduty://data-engineering"
+
+  # Schema Evolution
+  schema_monitoring:
+    enabled: true
+    alert_on:
+      - "column_added"
+      - "column_removed"
+      - "type_changed"
+    notification_channel: "slack://data-engineering"
+
+# Cost Management
+cost_management:
+  monthly_budget: "$3000"
+  budget_alerts:
+    - threshold: 0.5
+      notification: "slack://finance-alerts"
+    - threshold: 0.75
+      notification: "email://cfo@nexvigilant.com"
+    - threshold: 0.9
+      notification: "pagerduty://finance-engineering"
+
+  cost_optimization:
+    - "Use partitioning and clustering for all large tables"
+    - "Set table expiration for raw event data (90 days)"
+    - "Use incremental sync mode where possible"
+    - "Batch prediction jobs during off-peak hours"
+
+# Disaster Recovery
+disaster_recovery:
+  backup_strategy:
+    bigquery_snapshots:
+      frequency: "daily"
+      retention_days: 30
+
+    configuration_backup:
+      tool: "terraform"
+      repository: "github.com/nexvigilant/data-infrastructure"
+      backup_frequency: "on_change"
+
+  failover_plan:
+    multi_region: false  # Phase 2 enhancement
+    recovery_time_objective: "24 hours"
+    recovery_point_objective: "1 hour"
+
+# Compliance
+compliance:
+  data_retention:
+    raw_layer: "90 days"
+    staging_layer: "1 year"
+    marts_layer: "3 years"
+    user_deletion_sla: "30 days"
+
+  pii_handling:
+    encryption: "column_level"
+    fields:
+      - "email"
+      - "phone"
+      - "address"
+    access_control: "restricted"
+
+  audit_logging:
+    enabled: true
+    log_all_access: true
+    retention: "7 years"
