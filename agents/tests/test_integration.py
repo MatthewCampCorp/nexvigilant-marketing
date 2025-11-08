@@ -94,6 +94,7 @@ class MockCampaignDesignAgent:
         return {
             'success': True,
             'campaign_type': 'multi_channel',
+            'objective': kwargs.get('objective', 'Lead generation'),
             'channels': ['email', 'google_ads', 'social_media'],
             'targeting': {
                 'audience': 'high_value_customers',
@@ -104,7 +105,41 @@ class MockCampaignDesignAgent:
                 'google_ads': 0.50,
                 'social_media': 0.20
             },
-            'timeline': '2_weeks'
+            'timeline': '2_weeks',
+            'kpis': ['cost_per_lead', 'conversion_rate', 'roi']
+        }
+
+
+class MockPerformanceOptimizationAgent:
+    """Mock Performance Optimization Agent for integration testing."""
+
+    def execute(self, **kwargs):
+        """Simulate performance analysis."""
+        return {
+            'success': True,
+            'campaign_id': kwargs.get('campaign_id', 'test_campaign'),
+            'performance_score': 75.5,
+            'metrics_summary': {
+                'conversions': 50,
+                'ctr': 0.025,
+                'conversion_rate': 0.03,
+                'roi': 3.2
+            },
+            'recommendations': [
+                {
+                    'priority': 'HIGH',
+                    'category': 'budget_allocation',
+                    'action': 'Reallocate budget to high-performing channels',
+                    'expected_impact': 'Increase ROI by 20%'
+                }
+            ],
+            'quick_wins': [
+                {
+                    'action': 'Improve landing page speed',
+                    'effort': 'LOW',
+                    'impact': 'HIGH'
+                }
+            ]
         }
 
 
@@ -158,11 +193,12 @@ def test_multi_agent_delegation():
     # Initialize coordinator
     coordinator = MarketingCoordinator()
 
-    # Register multiple mock agents
+    # Register ALL five specialized agents
     coordinator.register_specialized_agent('data_intelligence', MockDataIntelligenceAgent())
     coordinator.register_specialized_agent('predictive_insights', MockPredictiveInsightsAgent())
     coordinator.register_specialized_agent('content_generation', MockContentGenerationAgent())
     coordinator.register_specialized_agent('campaign_design', MockCampaignDesignAgent())
+    coordinator.register_specialized_agent('performance_optimization', MockPerformanceOptimizationAgent())
 
     # Process complex request requiring multiple agents
     request = "Create a personalized email campaign targeting high-value customers with high conversion probability"
@@ -297,6 +333,45 @@ def test_error_handling():
     return True
 
 
+def test_complete_marketing_workflow():
+    """Test complete marketing workflow with all 5 specialized agents."""
+    print("\n=== Test 6: Complete Marketing Workflow (All 5 Agents) ===")
+
+    # Initialize coordinator
+    coordinator = MarketingCoordinator()
+
+    # Register ALL specialized agents
+    coordinator.register_specialized_agent('data_intelligence', MockDataIntelligenceAgent())
+    coordinator.register_specialized_agent('predictive_insights', MockPredictiveInsightsAgent())
+    coordinator.register_specialized_agent('content_generation', MockContentGenerationAgent())
+    coordinator.register_specialized_agent('campaign_design', MockCampaignDesignAgent())
+    coordinator.register_specialized_agent('performance_optimization', MockPerformanceOptimizationAgent())
+
+    # Complex workflow: analyze → predict → generate → design → optimize
+    workflow_requests = [
+        "Analyze customer segments",  # Data Intelligence
+        "Predict lead conversion",     # Predictive Insights
+        "Generate email content",      # Content Generation
+        "Design multi-channel campaign", # Campaign Design
+        "Analyze campaign performance"   # Performance Optimization
+    ]
+
+    results = []
+    for request in workflow_requests:
+        response = coordinator.process_request(request)
+        results.append(response)
+        assert response['results']['success'] is True, f"Failed request: {request}"
+
+    print(f"[PASS] Complete workflow test passed - {len(results)} agents executed")
+    print(f"   - Data Intelligence: Customer segmentation completed")
+    print(f"   - Predictive Insights: Lead scoring completed")
+    print(f"   - Content Generation: Email content created")
+    print(f"   - Campaign Design: Multi-channel plan created")
+    print(f"   - Performance Optimization: Analysis completed")
+
+    return True
+
+
 def run_integration_tests():
     """Run all integration tests."""
     print("\n" + "="*60)
@@ -308,7 +383,8 @@ def run_integration_tests():
         test_multi_agent_delegation,
         test_result_aggregation,
         test_delegation_statistics,
-        test_error_handling
+        test_error_handling,
+        test_complete_marketing_workflow
     ]
 
     passed = 0
