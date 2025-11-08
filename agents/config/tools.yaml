@@ -1,0 +1,267 @@
+# NexVigilant Marketing Agent System - Tool Configurations
+# Defines tools available to agents with connection details and parameters
+
+# BigQuery Tools
+bigquery_query:
+  type: "bigquery"
+  description: "Execute SQL queries against BigQuery data warehouse"
+  project_id: "${GOOGLE_CLOUD_PROJECT}"
+  datasets:
+    bronze: "${BIGQUERY_DATASET_BRONZE}"
+    silver: "${BIGQUERY_DATASET_SILVER}"
+    gold: "${BIGQUERY_DATASET_GOLD}"
+  default_dataset: "${BIGQUERY_DATASET_GOLD}"
+  timeout_seconds: 30
+  max_results: 10000
+  cache_enabled: true
+
+  # Security
+  allowed_tables:
+    - "customer_360"
+    - "campaign_performance"
+    - "attribution_model"
+    - "ml_features"
+
+  # Performance
+  require_partitioning: true
+  max_bytes_billed: 10737418240  # 10 GB
+
+dbt_query:
+  type: "dbt"
+  description: "Query dbt-managed data models"
+  project_path: "../phase-1-foundation/dbt-project"
+  profiles_dir: "../phase-1-foundation/dbt-project"
+  target: "prod"
+
+  # Available models
+  allowed_models:
+    - "stg_customer_360"
+    - "customer_360"
+    - "campaign_performance_summary"
+    - "ml_lead_scoring_features"
+
+# Vertex AI Model Tools
+lead_scoring_prediction:
+  type: "vertex_ai_prediction"
+  description: "Predict lead conversion probability"
+  endpoint: "${VERTEX_AI_ENDPOINT_LEAD_SCORING}"
+  project_id: "${GOOGLE_CLOUD_PROJECT}"
+  location: "${GOOGLE_CLOUD_LOCATION}"
+
+  # Input schema
+  input_features:
+    - "engagement_score"
+    - "demographic_fit"
+    - "behavioral_signals"
+    - "recency_days"
+    - "frequency_count"
+    - "monetary_value"
+
+  # Output format
+  output_field: "conversion_probability"
+  confidence_threshold: 0.7
+  timeout_ms: 100
+
+churn_prediction:
+  type: "vertex_ai_prediction"
+  description: "Predict customer churn probability"
+  endpoint: "${VERTEX_AI_ENDPOINT_CHURN}"
+  project_id: "${GOOGLE_CLOUD_PROJECT}"
+  location: "${GOOGLE_CLOUD_LOCATION}"
+
+  input_features:
+    - "customer_tenure_days"
+    - "engagement_trend"
+    - "support_tickets"
+    - "nps_score"
+    - "usage_frequency"
+
+  output_field: "churn_probability"
+  confidence_threshold: 0.7
+  timeout_ms: 100
+
+clv_forecast:
+  type: "vertex_ai_prediction"
+  description: "Forecast customer lifetime value"
+  endpoint: "${VERTEX_AI_ENDPOINT_CLV}"
+  project_id: "${GOOGLE_CLOUD_PROJECT}"
+  location: "${GOOGLE_CLOUD_LOCATION}"
+
+  input_features:
+    - "historical_revenue"
+    - "purchase_frequency"
+    - "average_order_value"
+    - "customer_segment"
+    - "engagement_score"
+
+  output_field: "predicted_clv"
+  forecast_horizon_days: 365
+  timeout_ms: 100
+
+# Gemini Content Generation
+gemini_content_generator:
+  type: "gemini"
+  description: "Generate marketing content using Gemini"
+  model: "${GEMINI_MODEL}"
+  project_id: "${GOOGLE_CLOUD_PROJECT}"
+  location: "${GOOGLE_CLOUD_LOCATION}"
+
+  # Generation parameters
+  temperature: 0.9
+  top_p: 0.95
+  top_k: 40
+  max_output_tokens: 2048
+
+  # Content types
+  supported_content_types:
+    - "email"
+    - "social_post"
+    - "ad_copy"
+    - "landing_page"
+    - "subject_line"
+
+  # Brand guidelines
+  brand_voice: "innovative, trustworthy, data-driven"
+  tone_options:
+    - "professional"
+    - "conversational"
+    - "urgent"
+    - "educational"
+
+# Google Marketing Platform APIs
+google_ads_api:
+  type: "google_ads"
+  description: "Create and manage Google Ads campaigns"
+  project_id: "${GOOGLE_CLOUD_PROJECT}"
+  developer_token: "${GOOGLE_ADS_DEVELOPER_TOKEN}"
+
+  # API version
+  api_version: "v16"
+
+  # Campaign settings
+  default_budget_micros: 10000000  # $10/day
+  default_bid_strategy: "MAXIMIZE_CONVERSIONS"
+
+  # Allowed operations
+  allowed_operations:
+    - "create_campaign"
+    - "update_budget"
+    - "pause_campaign"
+    - "create_ad_group"
+    - "create_ad"
+
+dv360_api:
+  type: "display_video"
+  description: "Manage Display & Video 360 campaigns"
+  advertiser_id: "${DV360_ADVERTISER_ID}"
+
+  # Default settings
+  default_insertion_order_budget: 1000
+  default_line_item_type: "LINE_ITEM_TYPE_DISPLAY_DEFAULT"
+
+  # Allowed operations
+  allowed_operations:
+    - "create_insertion_order"
+    - "create_line_item"
+    - "create_creative"
+    - "update_budget"
+
+ga360_analytics:
+  type: "google_analytics"
+  description: "Query Google Analytics 360 data"
+  property_id: "${GA360_PROPERTY_ID}"
+
+  # API settings
+  api_version: "v1beta"
+
+  # Default reporting dimensions
+  default_dimensions:
+    - "date"
+    - "campaign"
+    - "source"
+    - "medium"
+
+  # Default metrics
+  default_metrics:
+    - "sessions"
+    - "users"
+    - "conversions"
+    - "revenue"
+
+  # Date ranges
+  default_lookback_days: 30
+  max_lookback_days: 365
+
+# Utility Tools
+customer_segmentation:
+  type: "bigquery_ml"
+  description: "Segment customers using K-means clustering"
+  model_id: "${GOOGLE_CLOUD_PROJECT}.${BIGQUERY_DATASET_GOLD}.customer_segmentation_model"
+
+  # Clustering parameters
+  num_clusters: 5
+  features:
+    - "recency"
+    - "frequency"
+    - "monetary"
+    - "engagement_score"
+
+attribution_analyzer:
+  type: "bigquery"
+  description: "Analyze marketing attribution using custom model"
+  query_template: "attribution_queries/multi_touch_attribution.sql"
+  attribution_window_days: 30
+  attribution_model: "data_driven"
+
+ab_test_evaluator:
+  type: "statistical"
+  description: "Evaluate A/B test results with statistical significance"
+
+  # Statistical parameters
+  confidence_level: 0.95
+  minimum_sample_size: 1000
+  minimum_runtime_days: 7
+
+  # Metrics to evaluate
+  primary_metric: "conversion_rate"
+  secondary_metrics:
+    - "revenue_per_visitor"
+    - "average_order_value"
+    - "bounce_rate"
+
+budget_optimizer:
+  type: "optimization"
+  description: "Optimize budget allocation across channels"
+
+  # Optimization algorithm
+  algorithm: "gradient_descent"
+  objective: "maximize_conversions"
+
+  # Constraints
+  min_budget_per_channel: 100
+  max_budget_change_percent: 20
+  rebalance_frequency_days: 7
+
+# Global Tool Settings
+global_tool_config:
+  # Authentication
+  use_application_default_credentials: true
+
+  # Timeouts
+  default_timeout_seconds: 30
+  max_timeout_seconds: 300
+
+  # Retries
+  max_retries: 3
+  retry_backoff_multiplier: 2
+
+  # Caching
+  enable_caching: true
+  cache_ttl_hours: 24
+
+  # Rate limiting
+  rate_limit_requests_per_minute: 60
+
+  # Error handling
+  raise_on_error: true
+  log_all_requests: true

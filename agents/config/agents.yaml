@@ -1,0 +1,151 @@
+# NexVigilant Marketing Agent System Configuration
+# Defines agent behaviors, models, and orchestration patterns
+
+coordinator:
+  name: "Marketing Coordinator Agent"
+  description: "Routes marketing tasks to specialized agents and aggregates results"
+  model: "gemini-2.0-flash-exp"
+  temperature: 0.7
+  max_output_tokens: 2048
+  max_iterations: 10
+  timeout_seconds: 300
+
+  # Delegation strategy
+  delegation_mode: "intelligent"  # intelligent | sequential | parallel
+
+  # Sub-agents available for delegation
+  sub_agents:
+    - data_intelligence
+    - predictive_insights
+    - content_generation
+    - campaign_design
+    - performance_optimization
+
+  # Human-in-the-loop configuration
+  human_approval_required:
+    - campaign_launch
+    - budget_changes_over: 1000
+    - targeting_changes
+
+data_intelligence:
+  name: "Data Intelligence Agent"
+  description: "Queries BigQuery and dbt for customer insights"
+  model: "gemini-2.0-flash-exp"
+  temperature: 0.3  # Lower temperature for analytical tasks
+  max_output_tokens: 4096
+  timeout_seconds: 60
+
+  tools:
+    - bigquery_query
+    - dbt_query
+    - customer_segmentation
+    - trend_analysis
+
+  # BigQuery-specific settings
+  bigquery:
+    default_dataset: "marketing_marts"
+    max_query_results: 10000
+    cache_results: true
+    cache_ttl_hours: 24
+
+predictive_insights:
+  name: "Predictive Insights Agent"
+  description: "Provides ML-based predictions using Vertex AI models"
+  model: "gemini-2.0-flash-exp"
+  temperature: 0.2
+  max_output_tokens: 2048
+  timeout_seconds: 30
+
+  tools:
+    - lead_scoring_prediction
+    - churn_prediction
+    - clv_forecast
+
+  # Model performance thresholds
+  quality_thresholds:
+    min_confidence: 0.7
+    max_prediction_latency_ms: 100
+
+content_generation:
+  name: "Content Generation Agent"
+  description: "Creates personalized marketing content using Gemini"
+  model: "gemini-2.0-flash-exp"
+  temperature: 0.9  # Higher temperature for creative tasks
+  max_output_tokens: 4096
+  timeout_seconds: 45
+
+  tools:
+    - gemini_content_generator
+    - content_personalizer
+    - multi_variant_creator
+
+  # Content generation settings
+  content:
+    default_tone: "professional"
+    brand_voice: "innovative, trustworthy, data-driven"
+    max_variants: 10
+    include_subject_lines: true
+
+campaign_design:
+  name: "Campaign Design Agent"
+  description: "Designs multi-channel marketing campaigns"
+  model: "gemini-2.0-flash-exp"
+  temperature: 0.5
+  max_output_tokens: 3072
+  timeout_seconds: 60
+
+  tools:
+    - google_ads_api
+    - dv360_api
+    - sa360_api
+    - campaign_blueprint_creator
+
+  # Campaign settings
+  campaigns:
+    default_channels: ["search", "display", "video", "email"]
+    budget_allocation_strategy: "data_driven"
+    optimization_goal: "conversions"
+
+performance_optimization:
+  name: "Performance Optimization Agent"
+  description: "Analyzes campaign performance and optimizes"
+  model: "gemini-2.0-flash-exp"
+  temperature: 0.4
+  max_output_tokens: 3072
+  timeout_seconds: 60
+
+  tools:
+    - ga360_analytics
+    - attribution_analyzer
+    - ab_test_evaluator
+    - budget_optimizer
+
+  # Optimization settings
+  optimization:
+    lookback_days: 30
+    min_conversion_volume: 100
+    statistical_significance: 0.95
+    auto_adjust_budgets: false  # Requires human approval
+
+# Global agent settings
+global:
+  # Logging
+  log_level: "INFO"
+  log_all_interactions: true
+  log_pii: false
+
+  # Performance
+  default_timeout_seconds: 120
+  max_concurrent_agents: 5
+
+  # Safety
+  content_safety_threshold: "BLOCK_MEDIUM_AND_ABOVE"
+  require_human_review_for:
+    - budget_over: 5000
+    - targeting_children: true
+    - sensitive_categories: true
+
+  # Monitoring
+  enable_cloud_monitoring: true
+  alert_on_errors: true
+  alert_on_timeout: true
