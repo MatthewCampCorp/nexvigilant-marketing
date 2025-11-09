@@ -9,6 +9,7 @@ tests, and documentation.
 import os
 import json
 import logging
+import time
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime
@@ -197,7 +198,7 @@ class AgentBuilderAgent:
         # Generate coordinator
         coordinator_code = self._generate_coordinator(spec)
         coordinator_path = Path(spec.output_path) / spec.domain / "coordinator" / "main.py"
-        coordinator_path.write_text(coordinator_code)
+        coordinator_path.write_text(coordinator_code, encoding="utf-8")
         files_created.append(str(coordinator_path))
 
         # Generate each specialized agent
@@ -206,7 +207,7 @@ class AgentBuilderAgent:
             agent_code = self._generate_agent(agent, spec)
             agent_dir = Path(spec.output_path) / spec.domain / agent.name.lower()
             agent_path = agent_dir / "main.py"
-            agent_path.write_text(agent_code)
+            agent_path.write_text(agent_code, encoding="utf-8")
             files_created.append(str(agent_path))
             agent_files.append({
                 'name': agent.name,
@@ -217,19 +218,19 @@ class AgentBuilderAgent:
         # Generate integration tests
         test_code = self._generate_integration_tests(spec)
         test_path = Path(spec.output_path) / spec.domain / "tests" / "test_integration.py"
-        test_path.write_text(test_code)
+        test_path.write_text(test_code, encoding="utf-8")
         files_created.append(str(test_path))
 
         # Generate requirements.txt
         requirements = self._generate_requirements(spec)
         req_path = Path(spec.output_path) / spec.domain / "requirements.txt"
-        req_path.write_text(requirements)
+        req_path.write_text(requirements, encoding="utf-8")
         files_created.append(str(req_path))
 
         # Generate README.md
         readme = self._generate_readme(spec)
         readme_path = Path(spec.output_path) / spec.domain / "README.md"
-        readme_path.write_text(readme)
+        readme_path.write_text(readme, encoding="utf-8")
         files_created.append(str(readme_path))
 
         return {
@@ -468,6 +469,7 @@ class AgentBuilderAgent:
 
             # Parse response (expected to be Python dict format)
             result_text = response.text.strip()
+            time.sleep(0.2)
             # Remove code blocks if present
             if '```' in result_text:
                 result_text = result_text.split('```python')[-1].split('```')[0].strip()
@@ -505,6 +507,7 @@ class AgentBuilderAgent:
             )
 
             code = response.text.strip()
+            time.sleep(0.2)
             # Remove code blocks if present
             if '```' in code:
                 code = code.split('```python')[-1].split('```')[0].strip()
@@ -538,6 +541,7 @@ class AgentBuilderAgent:
             )
 
             code = response.text.strip()
+            time.sleep(0.2)
             if '```' in code:
                 code = code.split('```python')[-1].split('```')[0].strip()
 
@@ -569,6 +573,7 @@ class AgentBuilderAgent:
             )
 
             code = response.text.strip()
+            time.sleep(0.2)
             if '```' in code:
                 code = code.split('```python')[-1].split('```')[0].strip()
 
@@ -602,6 +607,7 @@ class AgentBuilderAgent:
             )
 
             code = response.text.strip()
+            time.sleep(0.2)
             if '```' in code:
                 code = code.split('```python')[-1].split('```')[0].strip()
 
@@ -640,6 +646,7 @@ class AgentBuilderAgent:
             )
 
             text = response.text.strip()
+            time.sleep(0.2)
             # Parse as list
             capabilities = [line.strip('- ').strip() for line in text.split('\n') if line.strip()]
             return capabilities[:5]  # Max 5 capabilities
@@ -670,6 +677,7 @@ class AgentBuilderAgent:
             )
 
             text = response.text.strip()
+            time.sleep(0.2)
             if '```' in text:
                 text = text.split('```python')[-1].split('```')[0].strip()
 
@@ -703,6 +711,7 @@ class AgentBuilderAgent:
             )
 
             text = response.text.strip()
+            time.sleep(0.2)
             if '```' in text:
                 text = text.split('```python')[-1].split('```')[0].strip()
 
